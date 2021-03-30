@@ -9,7 +9,7 @@ using PixelFormat = JPEG.Images.PixelFormat;
 
 namespace JPEG
 {
-	class Program
+	public class Program  //TODO delete public
 	{
 		const int CompressionQuality = 70;
 
@@ -20,31 +20,25 @@ namespace JPEG
 				Console.WriteLine(IntPtr.Size == 8 ? "64-bit version" : "32-bit version");
 				var sw = Stopwatch.StartNew();
 				var fileName = @"sample.bmp";
-//				var fileName = "Big_Black_River_Railroad_Bridge.bmp";
+                //var fileName = "Big_Black_River_Railroad_Bridge.bmp";
 				var compressedFileName = fileName + ".compressed." + CompressionQuality;
 				var uncompressedFileName = fileName + ".uncompressed." + CompressionQuality + ".bmp";
 				
-				using (var fileStream = File.OpenRead(fileName))
-				using (var bmp = (Bitmap) Image.FromStream(fileStream, false, false))
-				{
-					var imageMatrix = (Matrix) bmp;
-
-					sw.Stop();
-					Console.WriteLine($"{bmp.Width}x{bmp.Height} - {fileStream.Length / (1024.0 * 1024):F2} MB");
-					sw.Start();
-
-					var compressionResult = Compress(imageMatrix, CompressionQuality);
-					compressionResult.Save(compressedFileName);
-				}
-
+				var imageMatrix = LoadImageAsMatrix(fileName);
+				var compressionResult = Compress(imageMatrix, CompressionQuality);
+				compressionResult.Save(compressedFileName);
+				
 				sw.Stop();
 				Console.WriteLine("Compression: " + sw.Elapsed);
 				sw.Restart();
+				
 				var compressedImage = CompressedImage.Load(compressedFileName);
 				var uncompressedImage = Uncompress(compressedImage);
 				var resultBmp = (Bitmap) uncompressedImage;
 				resultBmp.Save(uncompressedFileName, ImageFormat.Bmp);
+				
 				Console.WriteLine("Decompression: " + sw.Elapsed);
+				
 				Console.WriteLine($"Peak commit size: {MemoryMeter.PeakPrivateBytes() / (1024.0*1024):F2} MB");
 				Console.WriteLine($"Peak working set: {MemoryMeter.PeakWorkingSet() / (1024.0*1024):F2} MB");
 			}
@@ -54,7 +48,17 @@ namespace JPEG
 			}
 		}
 
-		private static CompressedImage Compress(Matrix matrix, int quality = 50)
+		public static Matrix LoadImageAsMatrix(string fileName) //TODO delete public
+		{
+			using (var fileStream = File.OpenRead(fileName))
+			using (var bmp = (Bitmap) Image.FromStream(fileStream, false, false))
+			{
+				Console.WriteLine($"{bmp.Width}x{bmp.Height} - {fileStream.Length / (1024.0 * 1024):F2} MB");
+				return (Matrix) bmp;
+			}
+		}
+
+		public static CompressedImage Compress(Matrix matrix, int quality = 50) //TODO delete public
 		{
 			var allQuantizedBytes = new List<byte>();
 
@@ -81,7 +85,7 @@ namespace JPEG
 			return new CompressedImage {Quality = quality, CompressedBytes = compressedBytes, BitsCount = bitsCount, DecodeTable = decodeTable, Height = matrix.Height, Width = matrix.Width};
 		}
 		
-		private static Matrix Uncompress(CompressedImage image)
+		public static Matrix Uncompress(CompressedImage image) //TODO delete public
 		{
 			var result = new Matrix(image.Height, image.Width);
 			using (var allQuantizedBytes =
