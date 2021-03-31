@@ -8,8 +8,7 @@ namespace JpegBenchmarks
 {
     public class JpegBenchmark
     {
-        private const string ImagePath = 
-            @"C:\Users\denis\Desktop\shpora-debug-optimizations\optimizations\JPEG\sample.bmp";
+        private const string ImagePath = @"BenchmarkImages\sample.bmp";
         private const int CompressionQuality = 70;
         
         private string _compressedFileName;

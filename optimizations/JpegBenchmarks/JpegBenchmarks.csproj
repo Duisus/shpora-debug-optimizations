@@ -13,4 +13,10 @@
       <ProjectReference Include="..\JPEG\JPEG.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Update="BenchmarkImages\sample.bmp">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
 </Project>
