@@ -11,20 +11,19 @@ namespace JPEG
 			var width = input.GetLength(1);
 			var coeffs = new double[width, height];
 
-			MathEx.LoopByTwoVariables(
-				0, width,
-				0, height,
-				(u, v) =>
+			for (int i = 0; i < width; i++)
+			for (int j = 0; j < height; j++)
+			{
+				double sum = 0;
+				for (int x = 0; x < width; x++)
+				for (int y = 0; y < height; y++)
 				{
-					var sum = MathEx
-						.SumByTwoVariables(
-							0, width,
-							0, height,
-							(x, y) => BasisFunction(input[x, y], u, v, x, y, height, width));
+					sum += BasisFunction(input[x, y], i, j, x, y, height, width);
+				}
 
-					coeffs[u, v] = sum * Beta(height, width) * Alpha(u) * Alpha(v);
-				});
-			
+				coeffs[i, j] = sum * Beta(height, width) * Alpha(i) * Alpha(j);
+			}
+
 			return coeffs;
 		}
 
@@ -34,11 +33,15 @@ namespace JPEG
 			{
 				for(var y = 0; y < coeffs.GetLength(0); y++)
 				{
-					var sum = MathEx
-						.SumByTwoVariables(
-							0, coeffs.GetLength(1),
-							0, coeffs.GetLength(0),
-							(u, v) => BasisFunction(coeffs[u, v], u, v, x, y, coeffs.GetLength(0), coeffs.GetLength(1)) * Alpha(u) * Alpha(v));
+					double sum = 0;
+					for (int i = 0; i < coeffs.GetLength(1); i++)
+					for (int j = 0; j < coeffs.GetLength(0); j++)
+					{
+						sum += BasisFunction(
+							coeffs[i, j], i, j, x, y, 
+							coeffs.GetLength(0), 
+							coeffs.GetLength(1)) * Alpha(i) * Alpha(j);
+					}
 
 					output[x, y] = sum * Beta(coeffs.GetLength(0), coeffs.GetLength(1));
 				}
