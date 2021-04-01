@@ -25,7 +25,7 @@ namespace JPEG
 				var uncompressedFileName = fileName + ".uncompressed." + CompressionQuality + ".bmp";
 				
 				var imageMatrix = LoadImageAsMatrix(fileName);
-				var compressionResult = Compress(imageMatrix, CompressionQuality);
+				var compressionResult = Compress(imageMatrix, CompressionQuality);  //TODO create class Compressor
 				compressionResult.Save(compressedFileName);
 				
 				sw.Stop();
@@ -69,20 +69,30 @@ namespace JPEG
 					foreach (var selector in new Func<Pixel, double>[] {p => p.Y, p => p.Cb, p => p.Cr})
 					{
 						var subMatrix = GetSubMatrix(matrix, y, DCTSize, x, DCTSize, selector);
-						ShiftMatrixValues(subMatrix, -128);
+						ShiftMatrixValues(subMatrix, -128);  // TODO combine GetSubMatrix and ShiftMatrixValues ?
 						var channelFreqs = DCT.DCT2D(subMatrix);
 						var quantizedFreqs = Quantize(channelFreqs, quality);
-						var quantizedBytes = ZigZagScan(quantizedFreqs);
-						allQuantizedBytes.AddRange(quantizedBytes);
+						var quantizedBytes = ZigZagScan(quantizedFreqs);  // TODO optimize memory
+						allQuantizedBytes.AddRange(quantizedBytes);  // TODO optimize memory ???
 					}
 				}
 			}
+
+			QuantizationMatrix = null;  // TODO refactor (create Quantizer class?)
 
 			long bitsCount;
 			Dictionary<BitsWithLength, byte> decodeTable;
 			var compressedBytes = HuffmanCodec.Encode(allQuantizedBytes, out decodeTable, out bitsCount);
 
-			return new CompressedImage {Quality = quality, CompressedBytes = compressedBytes, BitsCount = bitsCount, DecodeTable = decodeTable, Height = matrix.Height, Width = matrix.Width};
+			return new CompressedImage
+			{
+				Quality = quality, 
+				CompressedBytes = compressedBytes, 
+				BitsCount = bitsCount, 
+				DecodeTable = decodeTable, 
+				Height = matrix.Height, 
+				Width = matrix.Width
+			};
 		}
 		
 		public static Matrix Uncompress(CompressedImage image) //TODO delete public
@@ -111,6 +121,8 @@ namespace JPEG
 					}
 				}
 			}
+			
+			QuantizationMatrix = null;  // TODO refactor (create Quantizer class?)
 
 			return result;
 		}
@@ -135,7 +147,8 @@ namespace JPEG
 					matrix.Pixels[yOffset + y, xOffset + x] = new Pixel(a[y, x], b[y, x], c[y, x], format);
 		}
 
-		private static double[,] GetSubMatrix(Matrix matrix, int yOffset, int yLength, int xOffset, int xLength, Func<Pixel, double> componentSelector)
+		private static double[,] GetSubMatrix(
+			Matrix matrix, int yOffset, int yLength, int xOffset, int xLength, Func<Pixel, double> componentSelector)
 		{
 			var result = new double[yLength, xLength];
 			for(var j = 0; j < yLength; j++)
@@ -176,12 +189,15 @@ namespace JPEG
 
 		private static byte[,] Quantize(double[,] channelFreqs, int quality)
 		{
+			var height = channelFreqs.GetLength(0);
+			var width = channelFreqs.GetLength(1);
 			var result = new byte[channelFreqs.GetLength(0), channelFreqs.GetLength(1)];
-
-			var quantizationMatrix = GetQuantizationMatrix(quality);
-			for(int y = 0; y < channelFreqs.GetLength(0); y++)
+			var quantizationMatrix = QuantizationMatrix 
+			                         ?? (QuantizationMatrix = GetQuantizationMatrix(quality));  //TODO optimize memory
+			
+			for(int y = 0; y < height; y++)
 			{
-				for(int x = 0; x < channelFreqs.GetLength(1); x++)
+				for(int x = 0; x < width; x++)
 				{
 					result[y, x] = (byte)(channelFreqs[y, x] / quantizationMatrix[y, x]);
 				}
@@ -192,12 +208,15 @@ namespace JPEG
 
 		private static double[,] DeQuantize(byte[,] quantizedBytes, int quality)
 		{
-			var result = new double[quantizedBytes.GetLength(0), quantizedBytes.GetLength(1)];
-			var quantizationMatrix = GetQuantizationMatrix(quality);
+			var height = quantizedBytes.GetLength(0);
+			var width = quantizedBytes.GetLength(1);
+			var result = new double[height, width];
+			var quantizationMatrix = QuantizationMatrix 
+			                         ?? (QuantizationMatrix = GetQuantizationMatrix(quality));  //TODO optimize memory
 
-			for(int y = 0; y < quantizedBytes.GetLength(0); y++)
+			for(int y = 0; y < height; y++)
 			{
-				for(int x = 0; x < quantizedBytes.GetLength(1); x++)
+				for(int x = 0; x < width; x++)
 				{
 					result[y, x] = ((sbyte)quantizedBytes[y, x]) * quantizationMatrix[y, x];//NOTE cast to sbyte not to loose negative numbers
 				}
@@ -206,6 +225,8 @@ namespace JPEG
 			return result;
 		}
 
+		private static int[,] QuantizationMatrix;
+		
 		private static int[,] GetQuantizationMatrix(int quality)
 		{
 			if(quality < 1 || quality > 99)
@@ -225,9 +246,9 @@ namespace JPEG
 				{72, 92, 95, 98, 112, 100, 103, 99}
 			};
 
-			for(int y = 0; y < result.GetLength(0); y++)
+			for(int y = 0; y < result.GetLength(0); y++)  // TODO optimize GetLength ???
 			{
-				for(int x = 0; x < result.GetLength(1); x++)
+				for(int x = 0; x < result.GetLength(1); x++)  // TODO optimize GetLength ???
 				{
 					result[y, x] = (multiplier * result[y, x] + 50) / 100;
 				}

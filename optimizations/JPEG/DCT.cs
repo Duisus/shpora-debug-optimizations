@@ -10,6 +10,7 @@ namespace JPEG
 			var height = input.GetLength(0);
 			var width = input.GetLength(1);
 			var coeffs = new double[width, height];
+			var beta = Beta(height, width);
 
 			for (int i = 0; i < width; i++)
 			for (int j = 0; j < height; j++)
@@ -21,7 +22,7 @@ namespace JPEG
 					sum += BasisFunction(input[x, y], i, j, x, y, height, width);
 				}
 
-				coeffs[i, j] = sum * Beta(height, width) * Alpha(i) * Alpha(j);
+				coeffs[i, j] = sum * beta * Alpha(i) * Alpha(j);  // TODO optimize Alpha
 			}
 
 			return coeffs;
@@ -29,21 +30,23 @@ namespace JPEG
 
 		public static void IDCT2D(double[,] coeffs, double[,] output)
 		{
-			for(var x = 0; x < coeffs.GetLength(1); x++)
+			var height = coeffs.GetLength(0);
+			var width = coeffs.GetLength(1);
+			var beta = Beta(height, width);
+			
+			for(var x = 0; x < width; x++)
 			{
-				for(var y = 0; y < coeffs.GetLength(0); y++)
+				for(var y = 0; y < height; y++)
 				{
 					double sum = 0;
-					for (int i = 0; i < coeffs.GetLength(1); i++)
-					for (int j = 0; j < coeffs.GetLength(0); j++)
+					for (int i = 0; i < width; i++)
+					for (int j = 0; j < height; j++)
 					{
-						sum += BasisFunction(
-							coeffs[i, j], i, j, x, y, 
-							coeffs.GetLength(0), 
-							coeffs.GetLength(1)) * Alpha(i) * Alpha(j);
+						sum += BasisFunction(coeffs[i, j], i, j, x, y, height, width)
+						       * Alpha(i) * Alpha(j);  // TODO optimize alpha
 					}
-
-					output[x, y] = sum * Beta(coeffs.GetLength(0), coeffs.GetLength(1));
+					
+					output[x, y] = sum * beta;
 				}
 			}
 		}

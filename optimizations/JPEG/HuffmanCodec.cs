@@ -112,7 +112,7 @@ namespace JPEG
 
 					if(decodeTable.TryGetValue(sample, out decodedByte))
 					{
-						result.Add(decodedByte);
+						result.Add(decodedByte);  // TODO optimize memory ???
 
 						sample.BitsCount = 0;
 						sample.Bits = 0;
