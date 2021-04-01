@@ -6,6 +6,7 @@ using JPEG;
 
 namespace JpegBenchmarks
 {
+    [MemoryDiagnoser]
     public class JpegBenchmark
     {
         private const string ImagePath = @"BenchmarkImages\sample.bmp";
