@@ -6,10 +6,11 @@ namespace JPEG.Images
     public class Pixel
     {
         private readonly PixelFormat format;
-
+        private static readonly PixelFormat[] supportedFormats = {PixelFormat.RGB, PixelFormat.YCbCr};
+        
         public Pixel(double firstComponent, double secondComponent, double thirdComponent, PixelFormat pixelFormat)
         {
-            if (!new[]{PixelFormat.RGB, PixelFormat.YCbCr}.Contains(pixelFormat))
+            if (!supportedFormats.Contains(pixelFormat))
                 throw new FormatException("Unknown pixel format: " + pixelFormat);
             format = pixelFormat;
             if (pixelFormat == PixelFormat.RGB)
@@ -18,7 +19,7 @@ namespace JPEG.Images
                 g = secondComponent;
                 b = thirdComponent;
             }
-            if (pixelFormat == PixelFormat.YCbCr)
+            else
             {
                 y = firstComponent;
                 cb = secondComponent;
