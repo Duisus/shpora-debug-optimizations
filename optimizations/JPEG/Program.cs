@@ -160,7 +160,11 @@ namespace JPEG
 
             for (var y = 0; y < height; y++)
             for (var x = 0; x < width; x++)
-                matrix.Pixels[yOffset + y, xOffset + x] = new Pixel(a[y, x], b[y, x], c[y, x], format);
+                matrix.Pixels[yOffset + y, xOffset + x] = new Pixel(
+                    Matrix.ToByte(a[y, x]),  //todo refactor
+                    Matrix.ToByte(b[y, x]),
+                    Matrix.ToByte(c[y, x]),
+                    format);
         }
 
         private static double[,] GetSubMatrix(

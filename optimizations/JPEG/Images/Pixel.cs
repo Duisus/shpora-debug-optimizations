@@ -3,44 +3,49 @@ using System.Linq;
 
 namespace JPEG.Images
 {
-    public class Pixel
+    public struct Pixel
     {
-        private readonly PixelFormat format;
+        public readonly PixelFormat Format;
         private static readonly PixelFormat[] supportedFormats = {PixelFormat.RGB, PixelFormat.YCbCr};
         
-        public Pixel(double firstComponent, double secondComponent, double thirdComponent, PixelFormat pixelFormat)
+        public Pixel(byte firstComponent, byte secondComponent, byte thirdComponent, PixelFormat pixelFormat)
         {
             if (!supportedFormats.Contains(pixelFormat))
                 throw new FormatException("Unknown pixel format: " + pixelFormat);
-            format = pixelFormat;
-            if (pixelFormat == PixelFormat.RGB)
-            {
-                r = firstComponent;
-                g = secondComponent;
-                b = thirdComponent;
-            }
-            else
-            {
-                y = firstComponent;
-                cb = secondComponent;
-                cr = thirdComponent;
-            }
+            Format = pixelFormat;
+            
+            this.firstComponent = firstComponent;
+            this.secondComponent = secondComponent;
+            this.thirdComponent = thirdComponent;
         }
 
-        private readonly double r;
-        private readonly double g;
-        private readonly double b;
+        private readonly byte firstComponent;
+        private readonly byte secondComponent;
+        private readonly byte thirdComponent;
 
-        private readonly double y;
-        private readonly double cb;
-        private readonly double cr;
-
-        public double R => format == PixelFormat.RGB ? r : (298.082 * y + 408.583 * Cr) / 256.0 - 222.921;
-        public double G => format == PixelFormat.RGB ? g : (298.082 * Y - 100.291 * Cb - 208.120 * Cr) / 256.0 + 135.576;
-        public double B => format == PixelFormat.RGB ? b : (298.082 * Y + 516.412 * Cb) / 256.0 - 276.836;
-
-        public double Y => format == PixelFormat.YCbCr ? y : 16.0 + (65.738 * R + 129.057 * G + 24.064 * B) / 256.0;
-        public double Cb => format == PixelFormat.YCbCr ? cb : 128.0 + (-37.945 * R - 74.494 * G + 112.439 * B) / 256.0;
-        public double Cr => format == PixelFormat.YCbCr ? cr : 128.0 + (112.439 * R - 94.154 * G - 18.285 * B) / 256.0;
+        public double R =>
+            Format == PixelFormat.RGB 
+                ? firstComponent
+                : (298.082 * firstComponent + 408.583 * thirdComponent) / 256.0 - 222.921;
+        public double G =>
+            Format == PixelFormat.RGB 
+                ? secondComponent 
+                : (298.082 * firstComponent - 100.291 * secondComponent - 208.120 * thirdComponent) / 256.0 + 135.576;
+        public double B => 
+            Format == PixelFormat.RGB 
+                ? thirdComponent 
+                : (298.082 * firstComponent + 516.412 * secondComponent) / 256.0 - 276.836;
+        public double Y => 
+            Format == PixelFormat.YCbCr 
+                ? firstComponent 
+                : 16.0 + (65.738 * firstComponent + 129.057 * secondComponent + 24.064 * thirdComponent) / 256.0;
+        public double Cb => 
+            Format == PixelFormat.YCbCr 
+                ? secondComponent 
+                : 128.0 + (-37.945 * firstComponent - 74.494 * secondComponent + 112.439 * thirdComponent) / 256.0;
+        public double Cr => 
+            Format == PixelFormat.YCbCr 
+                ? thirdComponent 
+                : 128.0 + (112.439 * firstComponent - 94.154 * secondComponent - 18.285 * thirdComponent) / 256.0;
     }
 }
