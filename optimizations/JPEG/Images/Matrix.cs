@@ -3,7 +3,7 @@ using System.Drawing.Imaging;
 
 namespace JPEG.Images
 {
-    public class Matrix //TODO delete public
+    public class Matrix
     {
         public readonly Pixel[,] Pixels;
         public readonly int Height;
@@ -80,8 +80,23 @@ namespace JPEG.Images
 
             return bmp;
         }
+        
+        public void SetPixels(double[,] a, double[,] b, double[,] c, PixelFormat format,
+            int yOffset, int xOffset)
+        {
+            var height = a.GetLength(0);
+            var width = a.GetLength(1);
 
-        public static byte ToByte(double d)
+            for (var y = 0; y < height; y++)
+            for (var x = 0; x < width; x++)
+                Pixels[yOffset + y, xOffset + x] = new Pixel(
+                    ToByte(a[y, x]), 
+                    ToByte(b[y, x]), 
+                    ToByte(c[y, x]), 
+                    format);
+        }
+
+        private static byte ToByte(double d)
         {
             var val = (int) d;
             if (val > byte.MaxValue)

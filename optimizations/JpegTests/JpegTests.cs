@@ -1,14 +1,21 @@
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using FluentAssertions;
-using JPEG;
+using JPEG.Classes;
 using NUnit.Framework;
 
 namespace JpegTests
 {
     public class JpegTests  //TODO add tests for earth.bmp
     {
+        private JpegCompressor _compressor;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _compressor = new JpegCompressor();
+        }
+        
         [TestCaseSource(nameof(_imageFilePaths))]
         public void Compress_CorrectCompressImage(string imageFilePath)
         {
@@ -33,29 +40,26 @@ namespace JpegTests
             UncompressTest(@"TestData\sample.bmp", compressionQuality);
         }
         
-        private static void CompressTest(string imageFilePath, int compressionQuality = 70)
+        private void CompressTest(string imageFilePath, int compressionQuality = 70)
         {
             var compressedFilePath = GetCompressedFilePath(imageFilePath, compressionQuality);
-            var imageMatrix = JPEG.Program.LoadImageAsMatrix(imageFilePath);
-            
-            var compressionResult = JPEG.Program.Compress(imageMatrix, compressionQuality);
+
+            var compressionResult = _compressor.Compress(imageFilePath, compressionQuality);
             compressionResult.Save(compressedFilePath + ".test");  //TODO add teardown to delete file
-            var comressedImageBytes = File.ReadAllBytes(compressedFilePath + ".test");
             
+            var comressedImageBytes = File.ReadAllBytes(compressedFilePath + ".test");
             var expectedResult = File.ReadAllBytes(compressedFilePath);
             comressedImageBytes.Should().BeEquivalentTo(
                 expectedResult,
                 config => config.WithStrictOrdering());
         }
 
-        private static void UncompressTest(string imageFilePath, int compressionQuality = 70)
+        private void UncompressTest(string imageFilePath, int compressionQuality = 70)
         {
-            var compressedImage = CompressedImage.Load(
-                GetCompressedFilePath(imageFilePath, compressionQuality));
-
-            var uncompressedImage = JPEG.Program.Uncompress(compressedImage);
-            var resultBmp = (Bitmap) uncompressedImage;
+            var compressedFilePath = GetCompressedFilePath(imageFilePath, compressionQuality);
             
+            var resultBmp = (Bitmap) _compressor.Uncompress(compressedFilePath);
+
             var expectedResult = (Bitmap) Image.FromFile(
                 GetUncompressedFilePath(imageFilePath, compressionQuality));
             BitmapEquals(resultBmp, expectedResult).Should().BeTrue();
@@ -71,7 +75,7 @@ namespace JpegTests
             return filePath + ".uncompressed." + compressionQuality + ".bmp";
         }
 
-        private static bool BitmapEquals(Bitmap first, Bitmap second)  //TODO find other ready method
+        private static bool BitmapEquals(Bitmap first, Bitmap second)
         {
             if (first.Width != second.Width || first.Height != second.Height)
                 return false;
@@ -86,13 +90,13 @@ namespace JpegTests
             return true;
         }
 
-        private static object[] _imageFilePaths =
+        private static object[] _imageFilePaths =  //todo use TestCases
         {
-            @"TestData\sample.bmp",  //TODO separate origin and compressed images
+            @"TestData\sample.bmp",
             @"TestData\MARBLES.BMP"
         };
         
-        private static object[] _compressionQualities =
+        private static object[] _compressionQualities =  //todo use TestCases
         {
             10,
             50,
