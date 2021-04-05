@@ -1,17 +1,17 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using JPEG.Utilities;
 
 namespace JPEG
 {
 	public class DCT
 	{
-		public static double[,] DCT2D(double[,] input)
+		public static void DCT2D(double[,] input, double[,] output)
 		{
 			var height = input.GetLength(0);
 			var width = input.GetLength(1);
-			var coeffs = new double[width, height];
 			var beta = Beta(height, width);
-
+		
 			for (int i = 0; i < width; i++)
 			for (int j = 0; j < height; j++)
 			{
@@ -21,11 +21,11 @@ namespace JPEG
 				{
 					sum += BasisFunction(input[x, y], i, j, x, y, height, width);
 				}
-
-				coeffs[i, j] = sum * beta * Alpha(i) * Alpha(j);  // TODO optimize Alpha
+		
+				var ci = i == 0 ? InverseSqrtOfTwo : 1;
+				var cj = j == 0 ? InverseSqrtOfTwo : 1;
+				output[i, j] = sum * beta * ci * cj;
 			}
-
-			return coeffs;
 		}
 
 		public static void IDCT2D(double[,] coeffs, double[,] output)
@@ -42,8 +42,10 @@ namespace JPEG
 					for (int i = 0; i < width; i++)
 					for (int j = 0; j < height; j++)
 					{
+						var ci = i == 0 ? InverseSqrtOfTwo : 1;
+						var cj = j == 0 ? InverseSqrtOfTwo : 1;
 						sum += BasisFunction(coeffs[i, j], i, j, x, y, height, width)
-						       * Alpha(i) * Alpha(j);  // TODO optimize alpha
+						       * ci * cj;
 					}
 					
 					output[x, y] = sum * beta;
@@ -59,10 +61,13 @@ namespace JPEG
 			return a * b * c;
 		}
 
-		private static double Alpha(int u)
+		private static readonly double InverseSqrtOfTwo = 1 / Math.Sqrt(2);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private static double Alpha(int u)  // TODO make correct inline
 		{
+			//return u == 0 ? inverseSqrtOfTwo : 1;
 			if(u == 0)
-				return 1 / Math.Sqrt(2);
+				return InverseSqrtOfTwo;
 			return 1;
 		}
 

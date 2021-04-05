@@ -20,7 +20,7 @@ namespace JPEG
             {
                 Console.WriteLine(IntPtr.Size == 8 ? "64-bit version" : "32-bit version");
                 var sw = Stopwatch.StartNew();
-                var fileName = @"BmpImages\\sample.bmp";
+                var fileName = @"BmpImages\\MARBLES.BMP";
                 //var fileName = "Big_Black_River_Railroad_Bridge.bmp";
                 var compressedFileName = fileName + ".compressed." + CompressionQuality;
                 var uncompressedFileName = fileName + ".uncompressed." + CompressionQuality + ".bmp";
@@ -52,6 +52,7 @@ namespace JPEG
         public static Matrix LoadImageAsMatrix(string fileName) //TODO delete public
         {
             using (var fileStream = File.OpenRead(fileName))
+            //using (var fileStream = new MemoryStream(File.ReadAllBytes(fileName))) todo
             using (var bmp = (Bitmap) Image.FromStream(fileStream, false, false))
             {
                 Console.WriteLine($"{bmp.Width}x{bmp.Height} - {fileStream.Length / (1024.0 * 1024):F2} MB");
@@ -68,16 +69,20 @@ namespace JPEG
             Parallel.For(0, matrix.Height / DCTSize, (lineNum) =>
             {
                 var y = lineNum * DCTSize;
+                var subMatrix = new double[DCTSize, DCTSize];
+                var channelFreqs = new double[DCTSize, DCTSize];
+                var quantizedFreqs = new byte[DCTSize, DCTSize];
+                var quantizedBytes = new byte[DCTSize * DCTSize];
+                
                 for (int x = 0; x < matrix.Width; x += DCTSize)
                 {
                     for (int i = 0; i < selectors.Length; i++)
                     {
-                        var subMatrix = GetSubMatrix(
-                            matrix, y, DCTSize, x, DCTSize, selectors[i]);
+                        InsertSubMatrixIn(subMatrix, matrix, y, x, selectors[i]);
                         ShiftMatrixValues(subMatrix, -128);  // TODO combine GetSubMatrix and ShiftMatrixValues ?
-                        var channelFreqs = DCT.DCT2D(subMatrix);
-                        var quantizedFreqs = Quantize(channelFreqs, quality);
-                        var quantizedBytes = ZigZagScan(quantizedFreqs); // TODO optimize memory
+                        DCT.DCT2D(subMatrix, channelFreqs);
+                        QuantizeIn(channelFreqs, quality, quantizedFreqs);
+                        ZigZagScanIn(quantizedFreqs, quantizedBytes);
                         var index = matrix.Width * y * 3 + x * 8 * 3 + i * 64;
                         quantizedBytes.CopyTo(allQuantizedBytes, index); 
                     }
@@ -105,7 +110,7 @@ namespace JPEG
         {
             var result = new Matrix(image.Height, image.Width);
             using (var allQuantizedBytes =
-                new MemoryStream(HuffmanCodec.Decode(image.CompressedBytes, image.DecodeTable, image.BitsCount)))
+                new MemoryStream(HuffmanCodec.Decode(image.CompressedBytes, image.DecodeTable, image.BitsCount)))  // TODO MemoryStream?
             {
                 Parallel.For(0, image.Height / DCTSize, (lineNum) =>
                 {
@@ -115,6 +120,8 @@ namespace JPEG
                     var channels = new[] {_y, cb, cr};
                     var quantizedBytes = new byte[DCTSize * DCTSize];
                     var y = lineNum * DCTSize;
+                    var channelFreqs = new double[DCTSize, DCTSize];
+                    var quantizedFreqs = new byte[DCTSize, DCTSize];
                     
                     for (var x = 0; x < image.Width; x += DCTSize)
                     {
@@ -126,8 +133,8 @@ namespace JPEG
                                 allQuantizedBytes.Position = offset;
                                 allQuantizedBytes.Read(quantizedBytes, 0, quantizedBytes.Length);   
                             }
-                            var quantizedFreqs = ZigZagUnScan(quantizedBytes);
-                            var channelFreqs = DeQuantize(quantizedFreqs, image.Quality);
+                            ZigZagUnScanIn(quantizedBytes, quantizedFreqs);
+                            DeQuantizeIn(quantizedFreqs, image.Quality, channelFreqs);
                             DCT.IDCT2D(channelFreqs, channels[i]);
                             ShiftMatrixValues(channels[i], 128);
                         }
@@ -167,91 +174,71 @@ namespace JPEG
                     format);
         }
 
-        private static double[,] GetSubMatrix(
-            Matrix matrix, int yOffset, int yLength, int xOffset, int xLength, Func<Pixel, double> componentSelector)
-        {
-            var result = new double[yLength, xLength];
-            for (var j = 0; j < yLength; j++)
-            for (var i = 0; i < xLength; i++)
-                result[j, i] = componentSelector(matrix.Pixels[yOffset + j, xOffset + i]);
-            return result;
-        }
-
-        private static void InsertShiftedSubMatrixInto(double[,] subMatrixForInsert, // todo delete
+        private static void InsertSubMatrixIn(double[,] subMatrixForInsert, // todo delete
             Matrix matrix, int yOffset, int xOffset, Func<Pixel, double> componentSelector)
         {
             for (var j = 0; j < DCTSize; j++)
             for (var i = 0; i < DCTSize; i++)
-                subMatrixForInsert[j, i] = componentSelector(matrix.Pixels[yOffset + j, xOffset + i]) - 128;
+                subMatrixForInsert[j, i] = componentSelector(matrix.Pixels[yOffset + j, xOffset + i]);
         }
 
-        private static byte[] ZigZagScan(byte[,] channelFreqs)
+        private static readonly int[] indexesX =
         {
-            return new[]
-            {
-                channelFreqs[0, 0], channelFreqs[0, 1], channelFreqs[1, 0], channelFreqs[2, 0], channelFreqs[1, 1],
-                channelFreqs[0, 2], channelFreqs[0, 3], channelFreqs[1, 2],
-                channelFreqs[2, 1], channelFreqs[3, 0], channelFreqs[4, 0], channelFreqs[3, 1], channelFreqs[2, 2],
-                channelFreqs[1, 3], channelFreqs[0, 4], channelFreqs[0, 5],
-                channelFreqs[1, 4], channelFreqs[2, 3], channelFreqs[3, 2], channelFreqs[4, 1], channelFreqs[5, 0],
-                channelFreqs[6, 0], channelFreqs[5, 1], channelFreqs[4, 2],
-                channelFreqs[3, 3], channelFreqs[2, 4], channelFreqs[1, 5], channelFreqs[0, 6], channelFreqs[0, 7],
-                channelFreqs[1, 6], channelFreqs[2, 5], channelFreqs[3, 4],
-                channelFreqs[4, 3], channelFreqs[5, 2], channelFreqs[6, 1], channelFreqs[7, 0], channelFreqs[7, 1],
-                channelFreqs[6, 2], channelFreqs[5, 3], channelFreqs[4, 4],
-                channelFreqs[3, 5], channelFreqs[2, 6], channelFreqs[1, 7], channelFreqs[2, 7], channelFreqs[3, 6],
-                channelFreqs[4, 5], channelFreqs[5, 4], channelFreqs[6, 3],
-                channelFreqs[7, 2], channelFreqs[7, 3], channelFreqs[6, 4], channelFreqs[5, 5], channelFreqs[4, 6],
-                channelFreqs[3, 7], channelFreqs[4, 7], channelFreqs[5, 6],
-                channelFreqs[6, 5], channelFreqs[7, 4], channelFreqs[7, 5], channelFreqs[6, 6], channelFreqs[5, 7],
-                channelFreqs[6, 7], channelFreqs[7, 6], channelFreqs[7, 7]
-            };
-        }
-
-        private static byte[,] ZigZagUnScan(IReadOnlyList<byte> quantizedBytes)
+            0,1,0,0,1,2,3,2,
+            1,0,0,1,2,3,4,5,
+            4,3,2,1,0,0,1,2,
+            3,4,5,6,7,6,5,4,
+            3,2,1,0,1,2,3,4,
+            5,6,7,7,6,5,4,3,
+            2,3,4,5,6,7,7,6,
+            5,4,5,6,7,7,6,7
+        };
+            
+        private static readonly int[] indexesY =
         {
-            return new[,]
+            0,0,1,2,1,0,0,1,
+            2,3,4,3,2,1,0,0,
+            1,2,3,4,5,6,5,4,
+            3,2,1,0,0,1,2,3,
+            4,5,6,7,7,6,5,4,
+            3,2,1,2,3,4,5,6,
+            7,7,6,5,4,3,4,5,
+            6,7,7,6,5,6,7,7
+        };
+        
+        private static void ZigZagScanIn(byte[,] channelFreqs, byte[] output)
+        {
+            for (int i = 0; i < indexesX.Length; i++)
             {
-                {
-                    quantizedBytes[0], quantizedBytes[1], quantizedBytes[5], quantizedBytes[6], quantizedBytes[14],
-                    quantizedBytes[15], quantizedBytes[27], quantizedBytes[28]
-                },
-                {
-                    quantizedBytes[2], quantizedBytes[4], quantizedBytes[7], quantizedBytes[13], quantizedBytes[16],
-                    quantizedBytes[26], quantizedBytes[29], quantizedBytes[42]
-                },
-                {
-                    quantizedBytes[3], quantizedBytes[8], quantizedBytes[12], quantizedBytes[17], quantizedBytes[25],
-                    quantizedBytes[30], quantizedBytes[41], quantizedBytes[43]
-                },
-                {
-                    quantizedBytes[9], quantizedBytes[11], quantizedBytes[18], quantizedBytes[24], quantizedBytes[31],
-                    quantizedBytes[40], quantizedBytes[44], quantizedBytes[53]
-                },
-                {
-                    quantizedBytes[10], quantizedBytes[19], quantizedBytes[23], quantizedBytes[32], quantizedBytes[39],
-                    quantizedBytes[45], quantizedBytes[52], quantizedBytes[54]
-                },
-                {
-                    quantizedBytes[20], quantizedBytes[22], quantizedBytes[33], quantizedBytes[38], quantizedBytes[46],
-                    quantizedBytes[51], quantizedBytes[55], quantizedBytes[60]
-                },
-                {
-                    quantizedBytes[21], quantizedBytes[34], quantizedBytes[37], quantizedBytes[47], quantizedBytes[50],
-                    quantizedBytes[56], quantizedBytes[59], quantizedBytes[61]
-                },
-                {
-                    quantizedBytes[35], quantizedBytes[36], quantizedBytes[48], quantizedBytes[49], quantizedBytes[57],
-                    quantizedBytes[58], quantizedBytes[62], quantizedBytes[63]
-                }
-            };
+                output[i] = channelFreqs[indexesY[i], indexesX[i]];
+            }
         }
 
-        private static byte[,] Quantize(double[,] channelFreqs, int quality)
+        private static int[,] indexesForUnScan =
+        {
+            {0, 1, 5, 6, 14, 15, 27, 28},
+            {2, 4, 7, 13, 16, 26, 29, 42},
+            {3, 8, 12, 17, 25, 30, 41, 43},
+            {9, 11, 18, 24, 31, 40, 44, 53},
+            {10, 19, 23, 32, 39, 45, 52, 54},
+            {20, 22, 33, 38, 46, 51, 55, 60},
+            {21, 34, 37, 47, 50, 56, 59, 61},
+            {35, 36, 48, 49, 57, 58, 62, 63}
+        };
+        
+        private static void ZigZagUnScanIn(IReadOnlyList<byte> quantizedBytes, byte[,] output)
+        {
+            for (int i = 0; i < DCTSize; i++)
+            for (int j = 0; j < DCTSize; j++)
+            {
+                output[i, j] = quantizedBytes[indexesForUnScan[i, j]];
+            }
+        }
+
+        private static void QuantizeIn(double[,] channelFreqs, int quality, byte[,] output)
         {
             var height = channelFreqs.GetLength(0);
             var width = channelFreqs.GetLength(1);
-            var result = new byte[channelFreqs.GetLength(0), channelFreqs.GetLength(1)];
             var quantizationMatrix = QuantizationMatrix
                                      ?? (QuantizationMatrix = GetQuantizationMatrix(quality));  // TODO refactor
 
@@ -259,18 +246,15 @@ namespace JPEG
             {
                 for (int x = 0; x < width; x++)
                 {
-                    result[y, x] = (byte) (channelFreqs[y, x] / quantizationMatrix[y, x]);
+                    output[y, x] = (byte) (channelFreqs[y, x] / quantizationMatrix[y, x]);
                 }
             }
-
-            return result;
         }
-
-        private static double[,] DeQuantize(byte[,] quantizedBytes, int quality)
+        
+        private static void DeQuantizeIn(byte[,] quantizedBytes, int quality, double[,] output)
         {
             var height = quantizedBytes.GetLength(0);
             var width = quantizedBytes.GetLength(1);
-            var result = new double[height, width];
             var quantizationMatrix = QuantizationMatrix
                                      ?? (QuantizationMatrix = GetQuantizationMatrix(quality)); // TODO refactor
 
@@ -278,13 +262,11 @@ namespace JPEG
             {
                 for (int x = 0; x < width; x++)
                 {
-                    result[y, x] =
+                    output[y, x] =
                         ((sbyte) quantizedBytes[y, x]) *
                         quantizationMatrix[y, x]; //NOTE cast to sbyte not to loose negative numbers
                 }
             }
-
-            return result;
         }
 
         private static int[,] QuantizationMatrix;
