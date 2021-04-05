@@ -14,38 +14,38 @@ namespace JPEG.Images
                 throw new FormatException("Unknown pixel format: " + pixelFormat);
             Format = pixelFormat;
             
-            this.firstComponent = firstComponent;
-            this.secondComponent = secondComponent;
-            this.thirdComponent = thirdComponent;
+            this.FirstComponent = firstComponent;
+            this.SecondComponent = secondComponent;
+            this.ThirdComponent = thirdComponent;
         }
 
-        private readonly byte firstComponent;
-        private readonly byte secondComponent;
-        private readonly byte thirdComponent;
+        public readonly byte FirstComponent;
+        public readonly byte SecondComponent;
+        public readonly byte ThirdComponent;
 
         public double R =>
             Format == PixelFormat.RGB 
-                ? firstComponent
-                : (298.082 * firstComponent + 408.583 * thirdComponent) / 256.0 - 222.921;
+                ? FirstComponent
+                : (298.082 * FirstComponent + 408.583 * ThirdComponent) / 256.0 - 222.921;
         public double G =>
             Format == PixelFormat.RGB 
-                ? secondComponent 
-                : (298.082 * firstComponent - 100.291 * secondComponent - 208.120 * thirdComponent) / 256.0 + 135.576;
+                ? SecondComponent 
+                : (298.082 * FirstComponent - 100.291 * SecondComponent - 208.120 * ThirdComponent) / 256.0 + 135.576;
         public double B => 
             Format == PixelFormat.RGB 
-                ? thirdComponent 
-                : (298.082 * firstComponent + 516.412 * secondComponent) / 256.0 - 276.836;
+                ? ThirdComponent 
+                : (298.082 * FirstComponent + 516.412 * SecondComponent) / 256.0 - 276.836;
         public double Y => 
             Format == PixelFormat.YCbCr 
-                ? firstComponent 
-                : 16.0 + (65.738 * firstComponent + 129.057 * secondComponent + 24.064 * thirdComponent) / 256.0;
+                ? FirstComponent 
+                : 16.0 + (65.738 * FirstComponent + 129.057 * SecondComponent + 24.064 * ThirdComponent) / 256.0;
         public double Cb => 
             Format == PixelFormat.YCbCr 
-                ? secondComponent 
-                : 128.0 + (-37.945 * firstComponent - 74.494 * secondComponent + 112.439 * thirdComponent) / 256.0;
+                ? SecondComponent 
+                : 128.0 + (-37.945 * FirstComponent - 74.494 * SecondComponent + 112.439 * ThirdComponent) / 256.0;
         public double Cr => 
             Format == PixelFormat.YCbCr 
-                ? thirdComponent 
-                : 128.0 + (112.439 * firstComponent - 94.154 * secondComponent - 18.285 * thirdComponent) / 256.0;
+                ? ThirdComponent 
+                : 128.0 + (112.439 * FirstComponent - 94.154 * SecondComponent - 18.285 * ThirdComponent) / 256.0;
     }
 }

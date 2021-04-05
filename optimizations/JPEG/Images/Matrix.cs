@@ -46,7 +46,7 @@ namespace JPEG.Images
                 (firstByteOfPixel, _matrix, y, x, bytesPerPixel) =>
             {
                 var pixel = matrix.Pixels[y, x / bytesPerPixel];
-                firstByteOfPixel[x] = ToByte(pixel.B); // todo refactor
+                firstByteOfPixel[x] = ToByte(pixel.B);
                 firstByteOfPixel[x + 1] = ToByte(pixel.G);
                 firstByteOfPixel[x + 2] = ToByte(pixel.R);
                 firstByteOfPixel[x + 3] = (byte) 255;

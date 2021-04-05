@@ -3,21 +3,26 @@ using System.Drawing.Imaging;
 using System.IO;
 using BenchmarkDotNet.Attributes;
 using JPEG;
+using JPEG.Classes;
 
 namespace JpegBenchmarks
 {
     [MemoryDiagnoser]
     public class JpegBenchmark
     {
-        private const string ImagePath = @"BenchmarkImages\sample.bmp";
+        //todo add params
+        private const string ImagePath = @"BenchmarkImages\MARBLES.BMP";
         private const int CompressionQuality = 70;
-        
+
+        private JpegCompressor _compressor;
         private string _compressedFileName;
         private string _uncompressedFileName;
 
         [GlobalSetup]
-        public void Setup()
+        public void GlobalSetup()
         {
+            _compressor = new JpegCompressor();
+            
             var fileName = Path.GetFileName(ImagePath);
             _compressedFileName = fileName + ".compressed." + CompressionQuality;
             _uncompressedFileName = fileName + ".uncompressed." + CompressionQuality + ".bmp";
@@ -26,16 +31,14 @@ namespace JpegBenchmarks
         [Benchmark]
         public void LoadAndCompressImage()
         {
-            var imageMatrix = JPEG.Program.LoadImageAsMatrix(ImagePath);
-            var compressionResult = JPEG.Program.Compress(imageMatrix, CompressionQuality);
+            var compressionResult = _compressor.Compress(ImagePath, CompressionQuality);
             compressionResult.Save(_compressedFileName);
         }
 
         [Benchmark]
         public void LoadAndUncompressImage()
         {
-            var compressedImage = CompressedImage.Load(_compressedFileName);
-            var uncompressedImage = JPEG.Program.Uncompress(compressedImage);
+            var uncompressedImage = _compressor.Uncompress(_compressedFileName);
             var resultBmp = (Bitmap) uncompressedImage;
             resultBmp.Save(_uncompressedFileName, ImageFormat.Bmp);
         }

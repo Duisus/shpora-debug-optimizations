@@ -76,7 +76,7 @@ namespace JPEG
 		}
 	}
 
-	class HuffmanCodec
+	class HuffmanCodec  // TODO optimize, it uses LINQ
 	{
 		public static byte[] Encode(IEnumerable<byte> data, out Dictionary<BitsWithLength, byte> decodeTable, out long bitsCount)
 		{
@@ -176,7 +176,7 @@ namespace JPEG
 		private static int[] CalcFrequences(IEnumerable<byte> data)
 		{
 			var result = new int[byte.MaxValue + 1];
-			Parallel.ForEach(data, b => Interlocked.Increment(ref result[b]));
+			Parallel.ForEach(data, b => Interlocked.Increment(ref result[b]));  // need it?
 			return result;
 		}
 	}
